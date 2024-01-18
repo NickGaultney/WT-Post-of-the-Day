@@ -212,6 +212,15 @@ class WT_Post_of_the_Day_Settings {
 	 * @return array Fields to be displayed on settings page
 	 */
 	private function settings_fields() {
+		// Get all post types
+	    $post_types = get_post_types( array( 'public' => true ), 'objects' );
+
+	    // Create an array to store post type names
+	    $post_type_options = array();
+	    foreach ( $post_types as $post_type ) {
+	        $post_type_options[ $post_type->name ] = $post_type->label;
+	    }
+
 
 		$settings['standard'] = array(
 			'title'       => __( 'Standard', 'wt-post-of-the-day' ),
@@ -221,8 +230,9 @@ class WT_Post_of_the_Day_Settings {
 					'id'          => 'potd_category',
 					'label'       => __( 'Category', 'wt-post-of-the-day' ),
 					'description' => __( 'This is the category for all the PotD', 'wt-post-of-the-day' ),
-					'type'        => 'text',
-					'default'     => '2',
+					'type'        => 'select',
+					'options'     => $post_type_options, // Use the dynamically generated options
+					'default'     => 'post',
 					'placeholder' => __( 'Placeholder text', 'wt-post-of-the-day' ),
 				),
 				array(

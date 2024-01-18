@@ -115,14 +115,31 @@ function cache_potd() {
     global $wpdb;
     $table_name = WT_Post_of_the_Day::table_name();
     $retrieve_data = $wpdb->get_results( "SELECT * FROM $table_name WHERE isActive = 1" );
+    $title = $scripture = $message = $quote = $prayer = $url = '';
 
-    $title = $retrieve_data[0]->title;
-    $content = $retrieve_data[0]->content;
+    if ( ! empty( $retrieve_data ) ) {
+      $post_id = $retrieve_data[0]->postID;
+
+      // Get post title and content
+      $title = get_the_title( $post_id );
+
+      // Get custom fields using get_post_meta
+      $scripture = get_post_meta( $post_id, 'scripture', true );
+      $message = get_post_meta( $post_id, 'message', true );
+      $quote = get_post_meta( $post_id, 'quote', true );
+      $prayer = get_post_meta( $post_id, 'prayer', true );
+      $url = get_post_meta( $post_id, 'devotional_pdf_url', true );
+
+    }
 
     set_transient('wt_potd_title', $title, 3600 * 24);
-    set_transient('wt_potd_content', $content, 3600 * 24);
+    set_transient('wt_potd_scripture', $scripture, 3600 * 24);
+    set_transient('wt_potd_message', $message, 3600 * 24);
+    set_transient('wt_potd_quote', $quote, 3600 * 24);
+    set_transient('wt_potd_prayer', $prayer, 3600 * 24);
+    set_transient('wt_potd_url', $url, 3600 * 24);
 
-    return [$title, $content];
+    return [$title, $scripture, $message, $quote, $prayer, $url];
 }
 
 /*
@@ -131,10 +148,10 @@ function cache_potd() {
 function all_emails() {
     global $wpdb;
     $newsletter_list = "list_" . WT_Post_of_the_Day_Settings::get_list();
-    $subscribers = $wpdb->get_results( "SELECT name, email FROM {$wpdb->prefix}newsletter WHERE {$newsletter_list} = 1", OBJECT );
+    $subscribers = $wpdb->get_results( "SELECT name, email, id FROM {$wpdb->prefix}newsletter WHERE {$newsletter_list} = 1", OBJECT );
 
     foreach ( $subscribers as $subscriber ) {
-        email( $subscriber->email );
+        email( $subscriber );
     }
 }
 
@@ -143,10 +160,11 @@ function all_emails() {
 */
 function email( $to ) {
     $subject = wt_title();
-    $message = email_content();
+    $unsubscribe_url = wt_tnp_unsubscribe_url($subscriber->id)
+    $message = email_content($unsubscribe_url);
     $headers = array('Content-Type: text/html; charset=UTF-8');
 
-    wp_mail( $to, $subject, $message, $headers );
+    wp_mail( $subscriber->email, $subject, $message, $headers );
 }
 
 
@@ -157,276 +175,495 @@ function wt_title() {
     $title = get_transient('wt_potd_title');
 
    if ($title === false) {
-    [$title, $content] = cache_potd();
+    [$title, $scripture, $message, $quote, $prayer, $url] = cache_potd();
    }
 
    return $title;
 }
 
 /*
-    Retrieves the title of today's PotD content and caches it if not already in cache
+    Retrieves the content of today's PotD content and caches it if not already in cache
 */
 function wt_content() {
-    $content = get_transient('wt_potd_content');
+    $scripture = get_transient('wt_potd_scripture');
+    $message = get_transient('wt_potd_message');
+    $quote = get_transient('wt_potd_quote');
+    $prayer = get_transient('wt_potd_prayer');
+    $url = get_transient('wt_potd_url');
 
-   if ($content === false) {
-    [$title, $content] = cache_potd();
-   }
+    if ( !($scripture && $message && $quote && $prayer && $url) ) {
+      [$title, $scripture, $message, $quote, $prayer, $url] = cache_potd();
+    }
 
+    $content = array(
+      'scripture' => $scripture,
+      'message'   => $message,
+      'quote'     => $quote,
+      'prayer'    => $prayer,
+      'url'       => $url,
+    );
+
+    #TODO make sure content is used properlly
    return $content;
+}
+
+function wt_tnp_unsubscribe_url( $user_id ) {
+  $url = home_url()
+
+  // Check if the Newsletter plugin is installed
+  if ( class_exists( 'Newsletter' ) ) {
+      // The Newsletter class exists, so the plugin is installed
+
+      // Get the instance if available
+      $newsletter = method_exists( 'Newsletter', 'instance' ) ? Newsletter::instance() : null;
+
+      if ( $newsletter ) {
+          // The Newsletter instance is available, so the plugin is active
+        $subscriber = $newsletter->get_user(user_id);
+        $url = home_url() . '?na=uc&k=' . $subscriber->id . '-' . $subscriber->token;
+          // Proceed with using the $newsletter instance
+          // ...
+
+      } else {
+          // The Newsletter instance is not available
+          // Handle the case where the plugin is not active
+      }
+
+  } else {
+      // The Newsletter class does not exist
+      // Handle the case where the plugin is not installed
+  }
+
+  return $url
 }
 
 /*
     The styling and content of the email body
 */
-function email_content() {
-    $body = "<!DOCTYPE html>
-    <html xmlns='https://www.w3.org/1999/xhtml' xmlns:o='urn:schemas-microsoft-com:office:office'>
-      <head>
-        <title>{email_subject}</title>
-        <meta charset='utf-8'>
-        <meta name='viewport' content='width=device-width, initial-scale=1'>
-        <meta http-equiv='X-UA-Compatible' content='IE=edge'>
-        <meta name='format-detection' content='address=no'>
-        <meta name='format-detection' content='telephone=no'>
-        <meta name='format-detection' content='email=no'>
-        <meta name='x-apple-disable-message-reformatting'>
-        <!--[if gte mso 9]>
-        <xml>
-          <o:OfficeDocumentSettings>
-            <o:AllowPNG/>
-            <o:PixelsPerInch>96</o:PixelsPerInch>
-          </o:OfficeDocumentSettings>
-        </xml>
-        <![endif]-->
-        <style type='text/css'>
-          #outlook a{padding:0;}
-          .ReadMsgBody{width:100%;} .ExternalClass{width:100%;}
-          .ExternalClass, .ExternalClass p, .ExternalClass span, .ExternalClass font, .ExternalClass td, .ExternalClass div {line-height: 100%;}
-          body { margin: 0; padding: 0; height: 100%!important; width: 100%!important; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; mso-line-height-rule: exactly;}
-          table,td { border-collapse: collapse !important; mso-table-lspace: 0pt; mso-table-rspace: 0pt;}
-          img { border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; max-width: 100%!important; -ms-interpolation-mode: bicubic;}
-          img.aligncenter { display: block; margin: 0 auto;}
-          @media screen and (max-width: 525px) {
-          .pt-1, .padding-top-15 { padding-top: 15px!important; }
-          .pb-1, .padding-bottom-15 { padding-bottom: 15px!important; }
-          .responsive { width:100%!important; }
-          table.responsive { width:100%!important; float: none; display: table; padding-left: 0; padding-right: 0; }
-          table[class='responsive'] { width:100%!important; float: none; display: table; padding-left: 0; padding-right: 0; }
-          img { max-width: 100%!important }
-          img[class='responsive'] { max-width: 100%!important; }
-          /* 'width: auto' restores the natural dimensions forced with attributes for Outlook */
-          .fluid { max-width: 100%!important; width: auto; }
-          img[class='fluid'] { max-width: 100%!important; width: auto; }
-          .block { display: block; }
-          td[class='responsive']{width:100%!important; max-width: 100%!important; display: block; padding-left: 0 !important; padding-right: 0!important; float: none; }
-          td.responsive { width:100%!important; max-width: 100%!important; display: block; padding-left: 0 !important; padding-right: 0!important; float: none; }
-          td[class='section-padding-bottom-image']{
-          padding: 50px 15px 0 15px !important;
-          }
-          .max-width-100 { max-width: 100%!important; }
-          /* Obsolete */
-          .tnp-grid-column {
-          max-width: 100%!important;
-          }
-          }
-          /* Text */
-          /* Last posts */
-          @media (max-width: 525px) {
-          .posts-1-column {
-          width: 100%!important;
-          }
-          .posts-1-image {
-          width: 100%!important;
-          display: block;
-          }
-          }
-          /* Html */
-          .html-td-global p {
-          font-family: Helvetica, Arial, sans-serif;
-          font-size: 16px;
-          }
-        </style>
-      </head>
-      <body style='margin: 0; padding: 0; line-height: normal; word-spacing: normal;' dir='ltr'>
-        <table cellpadding='0' cellspacing='0' border='0' width='100%'>
-          <tr>
-            <td bgcolor='#ffffff' valign='top'>
-              <!-- tnp -->
-              <table style='border-collapse: collapse; width: 100%;' class='tnpc-row tnpc-row-block' data-id='header' width='100%' cellspacing='0' cellpadding='0' border='0' align='center'>
-                <tbody>
-                  <tr>
-                    <td style='padding: 0;' class='edit-block' align='center'>
-                      <!--[if mso | IE]>
-                      <table role='presentation' border='0' cellpadding='0' align='center' cellspacing='0' width='600'>
-                        <tr>
-                          <td width='600' style='vertical-align:top;width:600px;'>
-                            <![endif]-->
-                            <table type='options' data-json='eyJibG9ja19wYWRkaW5nX3RvcCI6MTUsImJsb2NrX3BhZGRpbmdfYm90dG9tIjoxNSwiYmxvY2tfcGFkZGluZ19yaWdodCI6MTUsImJsb2NrX3BhZGRpbmdfbGVmdCI6MTUsImJsb2NrX2JhY2tncm91bmQiOiIiLCJibG9ja19iYWNrZ3JvdW5kXzIiOiIiLCJibG9ja193aWR0aCI6NjAwLCJibG9ja19hbGlnbiI6ImNlbnRlciIsImZvbnRfZmFtaWx5IjoiIiwiZm9udF9zaXplIjoiIiwiZm9udF9jb2xvciI6IiIsImZvbnRfd2VpZ2h0IjoiIiwibG9nb193aWR0aCI6IjEyMCIsImxheW91dCI6IiIsImlubGluZV9lZGl0cyI6IiIsImJsb2NrX2lkIjoiaGVhZGVyIn0=' class='tnpc-block-content' style='width: 100%!important; max-width: 600px!important' width='100%' cellspacing='0' cellpadding='0' border='0' align='center'>
-                              <tbody>
-                                <tr>
-                                  <td style='text-align: center; width: 100% !important; line-height: normal !important; letter-spacing: normal; padding-top: 15px; padding-left: 15px; padding-right: 15px; padding-bottom: 15px; background-color: #ffffff;' width='100%' bgcolor='#ffffff' align='center'>
-                                    <table style='margin: 0; border-collapse: collapse;' width='100%' cellspacing='0' cellpadding='0' border='0'>
-                                      <tbody>
-                                        <tr>
-                                          <td style='padding: 10px' width='50%' align='center'>
-                                            <a href='https://nickmark.info' target='_blank' style='font-size: 19px;font-family: Verdana, Geneva, sans-serif;font-weight: normal;color: #222222; text-decoration: none; line-height: normal;'>
-                                            " . WT_Post_of_the_Day_Settings::get_title() . "            </a>
-                                            <div style='font-size: 14px;font-family: Verdana, Geneva, sans-serif;font-weight: normal;color: #222222; text-decoration: none; line-height: normal; padding: 10px;'>" . WT_Post_of_the_Day_Settings::get_subtitle() . "</div>
-                                          </td>
-                                        </tr>
-                                      </tbody>
-                                    </table>
-                                  </td>
-                                </tr>
-                              </tbody>
-                            </table>
-                            <!--[if mso | IE]>
-                          </td>
-                        </tr>
-                      </table>
-                      <![endif]-->
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-              <table style='border-collapse: collapse; width: 100%;' class='tnpc-row tnpc-row-block' data-id='heading' width='100%' cellspacing='0' cellpadding='0' border='0' align='center'>
-                <tbody>
-                  <tr>
-                    <td style='padding: 0;' class='edit-block' align='center'>
-                      <!--[if mso | IE]>
-                      <table role='presentation' border='0' cellpadding='0' align='center' cellspacing='0' width='600'>
-                        <tr>
-                          <td width='600' style='vertical-align:top;width:600px;'>
-                            <![endif]-->
-                            <table type='options' data-json='eyJibG9ja19wYWRkaW5nX3RvcCI6MTUsImJsb2NrX3BhZGRpbmdfYm90dG9tIjoxNSwiYmxvY2tfcGFkZGluZ19yaWdodCI6MTUsImJsb2NrX3BhZGRpbmdfbGVmdCI6MTUsImJsb2NrX2JhY2tncm91bmQiOiIiLCJibG9ja19iYWNrZ3JvdW5kXzIiOiIiLCJibG9ja193aWR0aCI6NjAwLCJibG9ja19hbGlnbiI6ImNlbnRlciIsInRleHQiOiJUaGUgZGF5IGhhcyBjb21lISIsImFsaWduIjoiY2VudGVyIiwiZm9udF9mYW1pbHkiOiIiLCJmb250X3NpemUiOiIzNiIsImZvbnRfY29sb3IiOiIiLCJmb250X3dlaWdodCI6ImJvbGQiLCJibG9ja19pZCI6ImhlYWRpbmcifQ==' class='tnpc-block-content' style='width: 100%!important; max-width: 600px!important' width='100%' cellspacing='0' cellpadding='0' border='0' align='center'>
-                              <tbody>
-                                <tr>
-                                  <td style='text-align: center; width: 100% !important; line-height: normal !important; letter-spacing: normal; padding-top: 15px; padding-left: 15px; padding-right: 15px; padding-bottom: 15px; background-color: #FFFFFF;' width='100%' bgcolor='#FFFFFF' align='center'>
-                                    <table width='100%' cellspacing='0' cellpadding='0' border='0'>
-                                      <tbody>
-                                        <tr>
-                                          <td style='font-size: 36px;font-family: Verdana, Geneva, sans-serif;font-weight: bold;color: #222222; padding: 0; line-height: normal !important; letter-spacing: normal;' valign='middle' align='center'>" .
-                                            wt_title() . "
-                                          </td>
-                                        </tr>
-                                      </tbody>
-                                    </table>
-                                  </td>
-                                </tr>
-                              </tbody>
-                            </table>
-                            <!--[if mso | IE]>
-                          </td>
-                        </tr>
-                      </table>
-                      <![endif]-->
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-              <table style='border-collapse: collapse; width: 100%;' class='tnpc-row tnpc-row-block' data-id='text' width='100%' cellspacing='0' cellpadding='0' border='0' align='center'>
-                <tbody>
-                  <tr>
-                    <td style='padding: 0;' class='edit-block' align='center'>
-                      <!--[if mso | IE]>
-                      <table role='presentation' border='0' cellpadding='0' align='center' cellspacing='0' width='600'>
-                        <tr>
-                          <td width='600' style='vertical-align:top;width:600px;'>
-                            <![endif]-->
-                            <table type='options' data-json='eyJibG9ja19wYWRkaW5nX3RvcCI6MjAsImJsb2NrX3BhZGRpbmdfYm90dG9tIjoyMCwiYmxvY2tfcGFkZGluZ19yaWdodCI6MzAsImJsb2NrX3BhZGRpbmdfbGVmdCI6MzAsImJsb2NrX2JhY2tncm91bmQiOiIiLCJibG9ja19iYWNrZ3JvdW5kXzIiOiIiLCJibG9ja193aWR0aCI6NjAwLCJibG9ja19hbGlnbiI6ImNlbnRlciIsImh0bWwiOiJcdTAwM0NwIHN0eWxlPVwidGV4dC1hbGlnbjogY2VudGVyXCJcdTAwM0VcdTAwM0NzcGFuIHN0eWxlPVwiZm9udC1zaXplOiAxNnB4O2ZvbnQtZmFtaWx5OiBhcmlhbCxoZWx2ZXRpY2Esc2Fucy1zZXJpZlwiXHUwMDNFV2UgYXJlIGluY3JlZGlibHkgZXhjaXRlZCB0byBzaGFyZSB3aXRoIHlvdSBzb21lIGJpZyBuZXdzOiBvdXIgW25ldyBzZXJ2aWNlXSBpcyBmaW5hbGx5IGhlcmUgZm9yIHlvdSFcdTAwM0NcL3NwYW5cdTAwM0VcdTAwM0NcL3BcdTAwM0UiLCJmb250X2ZhbWlseSI6IiIsImZvbnRfc2l6ZSI6IiIsImZvbnRfY29sb3IiOiIiLCJibG9ja19pZCI6InRleHQifQ==' class='tnpc-block-content' style='width: 100%!important; max-width: 600px!important' width='100%' cellspacing='0' cellpadding='0' border='0' align='center'>
-                              <tbody>
-                                <tr>
-                                  <td style='text-align: center; width: 100% !important; line-height: normal !important; letter-spacing: normal; padding-top: 20px; padding-left: 30px; padding-right: 30px; padding-bottom: 20px; background-color: #FFFFFF;' width='100%' bgcolor='#FFFFFF' align='center'>
-                                    <table style='width: 100%!important' width='100%' cellspacing='0' cellpadding='0' border='0'>
-                                      <tbody>
-                                        <tr>
-                                          <td style='font-family: Verdana, Geneva, sans-serif; font-size: 16px; font-weight: normal; color: #222222; line-height: 1.5;' width='100%' valign='top' align='left'>
-                                            <p style='text-align: center'><span style='font-size: 16px;font-family: arial,helvetica,sans-serif'>
-                                            " . wt_content() . "</p>
-                                          </td>
-                                        </tr>
-                                      </tbody>
-                                    </table>
-                                  </td>
-                                </tr>
-                              </tbody>
-                            </table>
-                            <!--[if mso | IE]>
-                          </td>
-                        </tr>
-                      </table>
-                      <![endif]-->
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-              <table style='border-collapse: collapse; width: 100%;' class='tnpc-row tnpc-row-block' data-id='image' width='100%' cellspacing='0' cellpadding='0' border='0' align='center'>
-                <tbody>
-                  <tr>
-                    <td style='padding: 0;' class='edit-block' align='center'>
-                      <!--[if mso | IE]>
-                      <table role='presentation' border='0' cellpadding='0' align='center' cellspacing='0' width='600'>
-                        <tr>
-                          <td width='600' style='vertical-align:top;width:600px;'>
-                            <![endif]-->
-                            <table type='options' data-json='eyJibG9ja19wYWRkaW5nX3RvcCI6MTUsImJsb2NrX3BhZGRpbmdfYm90dG9tIjoxNSwiYmxvY2tfcGFkZGluZ19yaWdodCI6MCwiYmxvY2tfcGFkZGluZ19sZWZ0IjowLCJibG9ja19iYWNrZ3JvdW5kIjoiIiwiYmxvY2tfYmFja2dyb3VuZF8yIjoiIiwiYmxvY2tfd2lkdGgiOjYwMCwiYmxvY2tfYWxpZ24iOiJjZW50ZXIiLCJpbWFnZSI6eyJpZCI6IjAiLCJ1cmwiOiIifSwiaW1hZ2UtYWx0IjoiIiwidXJsIjoiIiwid2lkdGgiOiIwIiwiYWxpZ24iOiJjZW50ZXIiLCJpbmxpbmVfZWRpdHMiOiIiLCJwbGFjZWhvbGRlciI6Imh0dHBzOlwvXC9uaWNrbWFyay5pbmZvXC93cC1jb250ZW50XC9wbHVnaW5zXC9uZXdzbGV0dGVyXC9lbWFpbHNcL3ByZXNldHNcL2Fubm91bmNlbWVudFwvaW1hZ2VzXC9hbm5vdW5jZW1lbnQuanBnIiwiaW1hZ2UtdXJsIjoiIiwiYmxvY2tfaWQiOiJpbWFnZSJ9' class='tnpc-block-content' style='width: 100%!important; max-width: 600px!important' width='100%' cellspacing='0' cellpadding='0' border='0' align='center'>
-                              <tbody>
-                                <tr>
-                                  <td style='text-align: center; width: 100% !important; line-height: normal !important; letter-spacing: normal; padding-top: 15px; padding-left: 0px; padding-right: 0px; padding-bottom: 15px; background-color: #ffffff;' width='100%' bgcolor='#ffffff' align='center'>
-                                    <table width='100%'>
-                                      <tbody>
-                                        <tr>
-                                          <td align='center'><img src='" . WT_Post_of_the_Day_Settings::get_image() . "' alt=' style='display: block; max-width: 600px !important; width: 100%; padding: 0; border: 0; font-size: 12px' width='600' height='250' border='0'></td>
-                                        </tr>
-                                      </tbody>
-                                    </table>
-                                  </td>
-                                </tr>
-                              </tbody>
-                            </table>
-                            <!--[if mso | IE]>
-                          </td>
-                        </tr>
-                      </table>
-                      <![endif]-->
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-              <table style='border-collapse: collapse; width: 100%;' class='tnpc-row tnpc-row-block' data-id='footer' width='100%' cellspacing='0' cellpadding='0' border='0' align='center'>
-                <tbody>
-                  <tr>
-                    <td style='padding: 0;' class='edit-block' align='center'>
-                      <!--[if mso | IE]>
-                      <table role='presentation' border='0' cellpadding='0' align='center' cellspacing='0' width='600'>
-                        <tr>
-                          <td width='600' style='vertical-align:top;width:600px;'>
-                            <![endif]-->
-                            <table type='options' data-json='eyJibG9ja19wYWRkaW5nX3RvcCI6MTUsImJsb2NrX3BhZGRpbmdfYm90dG9tIjoxNSwiYmxvY2tfcGFkZGluZ19yaWdodCI6MTUsImJsb2NrX3BhZGRpbmdfbGVmdCI6MTUsImJsb2NrX2JhY2tncm91bmQiOiIiLCJibG9ja19iYWNrZ3JvdW5kXzIiOiIiLCJibG9ja193aWR0aCI6NjAwLCJibG9ja19hbGlnbiI6ImNlbnRlciIsInZpZXciOiJWaWV3IG9ubGluZSIsInZpZXdfZW5hYmxlZCI6MSwicHJvZmlsZSI6Ik1hbmFnZSB5b3VyIHN1YnNjcmlwdGlvbiIsInByb2ZpbGVfZW5hYmxlZCI6MSwidW5zdWJzY3JpYmUiOiJVbnN1YnNjcmliZSIsInVuc3Vic2NyaWJlX2VuYWJsZWQiOjEsImZvbnRfZmFtaWx5IjoiIiwiZm9udF9zaXplIjoiIiwiZm9udF9jb2xvciI6IiIsImZvbnRfd2VpZ2h0IjoiIiwidXJsIjoicHJvZmlsZSIsImJsb2NrX2lkIjoiZm9vdGVyIn0=' class='tnpc-block-content' style='width: 100%!important; max-width: 600px!important' width='100%' cellspacing='0' cellpadding='0' border='0' align='center'>
-                              <tbody>
-                                <tr>
-                                  <td style='text-align: center; width: 100% !important; line-height: normal !important; letter-spacing: normal; padding-top: 15px; padding-left: 15px; padding-right: 15px; padding-bottom: 15px; background-color: #FFFFFF;' width='100%' bgcolor='#FFFFFF' align='center'><a style='font-size: 13px;font-family: Verdana, Geneva, sans-serif;font-weight: normal;color: #222222; text-decoration: none; line-height: normal;' href='{unsubscription_url}' target='_blank'>Unsubscribe</a><span style='font-size: 13px;font-family: Verdana, Geneva, sans-serif;font-weight: normal;color: #222222; text-decoration: none; line-height: normal;'>   |   </span><a style='font-size: 13px;font-family: Verdana, Geneva, sans-serif;font-weight: normal;color: #222222; text-decoration: none; line-height: normal;' href='{profile_url}' target='_blank'>Manage your subscription</a><span style='font-size: 13px;font-family: Verdana, Geneva, sans-serif;font-weight: normal;color: #222222; text-decoration: none; line-height: normal;'>   |   </span><a style='font-size: 13px;font-family: Verdana, Geneva, sans-serif;font-weight: normal;color: #222222; text-decoration: none; line-height: normal;' href='{email_url}' target='_blank'>View online</a></td>
-                                </tr>
-                              </tbody>
-                            </table>
-                            <!--[if mso | IE]>
-                          </td>
-                        </tr>
-                      </table>
-                      <![endif]-->
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-              <!-- /tnp -->
-            </td>
-          </tr>
-        </table>
-      </body>
-    </html>";
+function email_content( $unsubscribe_url ) {
+    $hp_body = "<!DOCTYPE html>
 
-    return $body;
+    <html lang='en' xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:v='urn:schemas-microsoft-com:vml'>
+    <head>
+    <title></title>
+    <meta content='text/html; charset=utf-8' http-equiv='Content-Type'/>
+    <meta content='width=device-width, initial-scale=1.0' name='viewport'/><!--[if mso]><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch><o:AllowPNG/></o:OfficeDocumentSettings></xml><![endif]-->
+    <style>
+        * {
+          box-sizing: border-box;
+        }
+
+        body {
+          margin: 0;
+          padding: 0;
+        }
+
+        a[x-apple-data-detectors] {
+          color: inherit !important;
+          text-decoration: inherit !important;
+        }
+
+        #MessageViewBody a {
+          color: inherit;
+          text-decoration: none;
+        }
+
+        p {
+          line-height: inherit
+        }
+
+        .desktop_hide,
+        .desktop_hide table {
+          mso-hide: all;
+          display: none;
+          max-height: 0px;
+          overflow: hidden;
+        }
+
+        .image_block img+div {
+          display: none;
+        }
+
+        .menu_block.desktop_hide .menu-links span {
+          mso-hide: all;
+        }
+
+        @media (max-width:768px) {
+          .desktop_hide table.icons-inner {
+            display: inline-block !important;
+          }
+
+          .icons-inner {
+            text-align: center;
+          }
+
+          .icons-inner td {
+            margin: 0 auto;
+          }
+
+          .mobile_hide {
+            display: none;
+          }
+
+          .row-content {
+            width: 100% !important;
+          }
+
+          .stack .column {
+            width: 100%;
+            display: block;
+          }
+
+          .mobile_hide {
+            min-height: 0;
+            max-height: 0;
+            max-width: 0;
+            overflow: hidden;
+            font-size: 0px;
+          }
+
+          .desktop_hide,
+          .desktop_hide table {
+            display: table !important;
+            max-height: none !important;
+          }
+        }
+      </style>
+    </head>
+    <body style='background-color: #3f3f3f; margin: 0; padding: 0; -webkit-text-size-adjust: none; text-size-adjust: none;'>
+    <table border='0' cellpadding='0' cellspacing='0' class='nl-container' role='presentation' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt; background-color: #3f3f3f;' width='100%'>
+    <tbody>
+    <tr>
+    <td>
+    <table align='center' border='0' cellpadding='0' cellspacing='0' class='row row-1' role='presentation' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt;' width='100%'>
+    <tbody>
+    <tr>
+    <td>
+    <table align='center' border='0' cellpadding='0' cellspacing='0' class='row-content stack' role='presentation' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt; color: #000000; width: 800px; margin: 0 auto;' width='800'>
+    <tbody>
+    <tr>
+    <td class='column column-1' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt; font-weight: 400; text-align: left; padding-bottom: 5px; padding-top: 5px; vertical-align: top; border-top: 0px; border-right: 0px; border-bottom: 0px; border-left: 0px;' width='100%'>
+    <table border='0' cellpadding='10' cellspacing='0' class='heading_block block-1' role='presentation' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt;' width='100%'>
+    <tr>
+    <td class='pad'>
+    <h1 style='margin: 0; color: #ffffff; direction: ltr; font-family: Arial, Helvetica, sans-serif; font-size: 38px; font-weight: 700; letter-spacing: normal; line-height: 120%; text-align: center; margin-top: 0; margin-bottom: 0; mso-line-height-alt: 45.6px;'><span class='tinyMce-placeholder'>Traveling Prayer Partners</span></h1>
+    </td>
+    </tr>
+    </table>
+    </td>
+    </tr>
+    </tbody>
+    </table>
+    </td>
+    </tr>
+    </tbody>
+    </table>
+    <table align='center' border='0' cellpadding='0' cellspacing='0' class='row row-2' role='presentation' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt;' width='100%'>
+    <tbody>
+    <tr>
+    <td>
+    <table align='center' border='0' cellpadding='0' cellspacing='0' class='row-content stack' role='presentation' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt; border-bottom: 10px solid transparent; border-left: 10px solid transparent; border-radius: 0; border-right: 10px solid transparent; border-top: 10px solid transparent; color: #000000; width: 800px; margin: 0 auto;' width='800'>
+    <tbody>
+    <tr>
+    <td class='column column-1' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt; font-weight: 400; text-align: left; background-color: #222222; padding-bottom: 20px; padding-left: 20px; padding-right: 20px; padding-top: 20px; vertical-align: top; border-top: 0px; border-right: 0px; border-bottom: 0px; border-left: 0px;' width='100%'>
+    <table border='0' cellpadding='10' cellspacing='0' class='text_block block-1' role='presentation' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt; word-break: break-word;' width='100%'>
+    <tr>
+    <td class='pad'>
+    <div style='font-family: sans-serif'>
+    <div class=' style='font-size: 12px; font-family: Arial, Helvetica, sans-serif; mso-line-height-alt: 14.399999999999999px; color: #ffffff; line-height: 1.2;'>
+    <p style='margin: 0; font-size: 16px; text-align: left; mso-line-height-alt: 19.2px;'><span style='font-size:20px;'><em><strong>" . wt_title() . "</strong></em></span></p>
+    </div>
+    </div>
+    </td>
+    </tr>
+    </table>
+    <table border='0' cellpadding='10' cellspacing='0' class='divider_block block-2' role='presentation' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt;' width='100%'>
+    <tr>
+    <td class='pad'>
+    <div align='left' class='alignment'>
+    <table border='0' cellpadding='0' cellspacing='0' role='presentation' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt;' width='33%'>
+    <tr>
+    <td class='divider_inner' style='font-size: 1px; line-height: 1px; border-top: 5px solid #CDA95B;'><span> </span></td>
+    </tr>
+    </table>
+    </div>
+    </td>
+    </tr>
+    </table>
+    <table border='0' cellpadding='10' cellspacing='0' class='text_block block-3' role='presentation' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt; word-break: break-word;' width='100%'>
+    <tr>
+    <td class='pad'>
+    <div style='font-family: sans-serif'>
+    <div class=' style='font-size: 12px; font-family: Arial, Helvetica, sans-serif; mso-line-height-alt: 21.6px; color: #ffffff; line-height: 1.8;'>
+    <p style='margin: 0; font-size: 16px; mso-line-height-alt: 21.6px;'> </p>
+    <p style='margin: 0; font-size: 16px; mso-line-height-alt: 28.8px;'><span style='font-size:16px;'>" . wt_content()['scripture'] . "</span></p>
+    </div>
+    </div>
+    </td>
+    </tr>
+    </table>
+    </td>
+    </tr>
+    </tbody>
+    </table>
+    </td>
+    </tr>
+    </tbody>
+    </table>
+    <table align='center' border='0' cellpadding='0' cellspacing='0' class='row row-3' role='presentation' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt;' width='100%'>
+    <tbody>
+    <tr>
+    <td>
+    <table align='center' border='0' cellpadding='0' cellspacing='0' class='row-content stack' role='presentation' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt; border-bottom: 10px solid transparent; border-left: 10px solid transparent; border-radius: 0; border-right: 10px solid transparent; border-top: 10px solid transparent; color: #000000; width: 800px; margin: 0 auto;' width='800'>
+    <tbody>
+    <tr>
+    <td class='column column-1' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt; font-weight: 400; text-align: left; background-color: #222222; padding-bottom: 20px; padding-left: 20px; padding-right: 20px; padding-top: 20px; vertical-align: top; border-top: 0px; border-right: 0px; border-bottom: 0px; border-left: 0px;' width='100%'>
+    <table border='0' cellpadding='10' cellspacing='0' class='text_block block-1' role='presentation' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt; word-break: break-word;' width='100%'>
+    <tr>
+    <td class='pad'>
+    <div style='font-family: sans-serif'>
+    <div class=' style='font-size: 12px; font-family: Arial, Helvetica, sans-serif; mso-line-height-alt: 14.399999999999999px; color: #ffffff; line-height: 1.2;'>
+    <p style='margin: 0; font-size: 16px; text-align: left; mso-line-height-alt: 19.2px;'><span style='font-size:20px;'><em><strong>Message</strong></em></span></p>
+    </div>
+    </div>
+    </td>
+    </tr>
+    </table>
+    <table border='0' cellpadding='10' cellspacing='0' class='divider_block block-2' role='presentation' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt;' width='100%'>
+    <tr>
+    <td class='pad'>
+    <div align='left' class='alignment'>
+    <table border='0' cellpadding='0' cellspacing='0' role='presentation' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt;' width='33%'>
+    <tr>
+    <td class='divider_inner' style='font-size: 1px; line-height: 1px; border-top: 5px solid #CDA95B;'><span> </span></td>
+    </tr>
+    </table>
+    </div>
+    </td>
+    </tr>
+    </table>
+    <table border='0' cellpadding='10' cellspacing='0' class='text_block block-3' role='presentation' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt; word-break: break-word;' width='100%'>
+    <tr>
+    <td class='pad'>
+    <div style='font-family: sans-serif'>
+    <div class=' style='font-size: 12px; font-family: Arial, Helvetica, sans-serif; mso-line-height-alt: 18px; color: #ffffff; line-height: 1.5;'>
+    <p style='margin: 0; mso-line-height-alt: 24px;'><span style='font-size:16px;'>" . wt_content()['message'] . "</span></p>
+    </div>
+    </div>
+    </td>
+    </tr>
+    </table>
+    </td>
+    </tr>
+    </tbody>
+    </table>
+    </td>
+    </tr>
+    </tbody>
+    </table>
+    <table align='center' border='0' cellpadding='0' cellspacing='0' class='row row-4' role='presentation' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt;' width='100%'>
+    <tbody>
+    <tr>
+    <td>
+    <table align='center' border='0' cellpadding='0' cellspacing='0' class='row-content stack' role='presentation' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt; border-radius: 0; color: #000000; width: 800px; margin: 0 auto;' width='800'>
+    <tbody>
+    <tr>
+    <td class='column column-1' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt; font-weight: 400; text-align: left; background-color: #222222; border-bottom: 10px solid #3F3F3F; border-left: 10px solid #3F3F3F; border-right: 10px solid #3F3F3F; border-top: 10px solid #3F3F3F; padding-bottom: 20px; padding-left: 20px; padding-right: 20px; padding-top: 20px; vertical-align: top;' width='50%'>
+    <table border='0' cellpadding='10' cellspacing='0' class='text_block block-1' role='presentation' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt; word-break: break-word;' width='100%'>
+    <tr>
+    <td class='pad'>
+    <div style='font-family: sans-serif'>
+    <div class=' style='font-size: 12px; font-family: Arial, Helvetica, sans-serif; mso-line-height-alt: 14.399999999999999px; color: #ffffff; line-height: 1.2;'>
+    <p style='margin: 0; font-size: 16px; text-align: left; mso-line-height-alt: 19.2px;'><span style='font-size:20px;'><em><strong>Today's Quote</strong></em></span></p>
+    </div>
+    </div>
+    </td>
+    </tr>
+    </table>
+    <table border='0' cellpadding='10' cellspacing='0' class='divider_block block-2' role='presentation' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt;' width='100%'>
+    <tr>
+    <td class='pad'>
+    <div align='left' class='alignment'>
+    <table border='0' cellpadding='0' cellspacing='0' role='presentation' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt;' width='33%'>
+    <tr>
+    <td class='divider_inner' style='font-size: 1px; line-height: 1px; border-top: 5px solid #CDA95B;'><span> </span></td>
+    </tr>
+    </table>
+    </div>
+    </td>
+    </tr>
+    </table>
+    <table border='0' cellpadding='10' cellspacing='0' class='text_block block-3' role='presentation' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt; word-break: break-word;' width='100%'>
+    <tr>
+    <td class='pad'>
+    <div style='font-family: sans-serif'>
+    <div class=' style='font-size: 12px; font-family: Arial, Helvetica, sans-serif; mso-line-height-alt: 18px; color: #ffffff; line-height: 1.5;'>
+    <p style='margin: 0; font-size: 16px; mso-line-height-alt: 18px;'> </p>
+    <p style='margin: 0; font-size: 16px; mso-line-height-alt: 24px;'><span style='font-size:16px;'>" . wt_content()['quote'] . "</span></p>
+    </div>
+    </div>
+    </td>
+    </tr>
+    </table>
+    </td>
+    <td class='column column-2' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt; font-weight: 400; text-align: left; background-color: #222222; border-bottom: 10px solid #3F3F3F; border-left: 10px solid #3F3F3F; border-right: 10px solid #3F3F3F; border-top: 10px solid #3F3F3F; padding-bottom: 20px; padding-left: 20px; padding-right: 20px; padding-top: 20px; vertical-align: top;' width='50%'>
+    <table border='0' cellpadding='10' cellspacing='0' class='text_block block-1' role='presentation' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt; word-break: break-word;' width='100%'>
+    <tr>
+    <td class='pad'>
+    <div style='font-family: sans-serif'>
+    <div class=' style='font-size: 12px; font-family: Arial, Helvetica, sans-serif; mso-line-height-alt: 14.399999999999999px; color: #ffffff; line-height: 1.2;'>
+    <p style='margin: 0; font-size: 16px; text-align: left; mso-line-height-alt: 19.2px;'><span style='font-size:20px;'><em><strong>Today's Prayer</strong></em></span></p>
+    </div>
+    </div>
+    </td>
+    </tr>
+    </table>
+    <table border='0' cellpadding='10' cellspacing='0' class='divider_block block-2' role='presentation' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt;' width='100%'>
+    <tr>
+    <td class='pad'>
+    <div align='left' class='alignment'>
+    <table border='0' cellpadding='0' cellspacing='0' role='presentation' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt;' width='33%'>
+    <tr>
+    <td class='divider_inner' style='font-size: 1px; line-height: 1px; border-top: 5px solid #CDA95B;'><span> </span></td>
+    </tr>
+    </table>
+    </div>
+    </td>
+    </tr>
+    </table>
+    <table border='0' cellpadding='10' cellspacing='0' class='text_block block-3' role='presentation' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt; word-break: break-word;' width='100%'>
+    <tr>
+    <td class='pad'>
+    <div style='font-family: sans-serif'>
+    <div class=' style='font-size: 12px; font-family: Arial, Helvetica, sans-serif; mso-line-height-alt: 18px; color: #ffffff; line-height: 1.5;'>
+    <p style='margin: 0; font-size: 16px; mso-line-height-alt: 18px;'> </p>
+    <p style='margin: 0; font-size: 16px; mso-line-height-alt: 24px;'><span style='font-size:16px;'>" . wt_content()['prayer'] . "</span></p>
+    </div>
+    </div>
+    </td>
+    </tr>
+    </table>
+    </td>
+    </tr>
+    </tbody>
+    </table>
+    </td>
+    </tr>
+    </tbody>
+    </table>
+    <table align='center' border='0' cellpadding='0' cellspacing='0' class='row row-5' role='presentation' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt;' width='100%'>
+    <tbody>
+    <tr>
+    <td>
+    <table align='center' border='0' cellpadding='0' cellspacing='0' class='row-content stack' role='presentation' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt; color: #000000; width: 800px; margin: 0 auto;' width='800'>
+    <tbody>
+    <tr>
+    <td class='column column-1' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt; font-weight: 400; text-align: left; padding-bottom: 5px; padding-top: 5px; vertical-align: top; border-top: 0px; border-right: 0px; border-bottom: 0px; border-left: 0px;' width='100%'>
+    <table border='0' cellpadding='10' cellspacing='0' class='button_block block-1' role='presentation' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt;' width='100%'>
+    <tr>
+    <td class='pad'>
+    <div align='left' class='alignment'><!--[if mso]>
+    <v:roundrect xmlns:v='urn:schemas-microsoft-com:vml' xmlns:w='urn:schemas-microsoft-com:office:word' href='https://him-powered.com' style='height:42px;width:191px;v-text-anchor:middle;' arcsize='10%' stroke='false' fillcolor='#5b7fcd'>
+    <w:anchorlock/>
+    <v:textbox inset='0px,0px,0px,0px'>
+    <center style='color:#ffffff; font-family:Arial, sans-serif; font-size:16px'>
+    <![endif]--><a href='" . wt_content()['url'] . "' style='text-decoration:none;display:inline-block;color:#ffffff;background-color:#5b7fcd;border-radius:4px;width:auto;border-top:0px solid transparent;font-weight:400;border-right:0px solid transparent;border-bottom:0px solid transparent;border-left:0px solid transparent;padding-top:5px;padding-bottom:5px;font-family:Arial, Helvetica, sans-serif;font-size:16px;text-align:center;mso-border-alt:none;word-break:keep-all;' target='_blank'><span style='padding-left:20px;padding-right:20px;font-size:16px;display:inline-block;letter-spacing:normal;'><span style='word-break: break-word; line-height: 32px;'>Download Devotional</span></span></a><!--[if mso]></center></v:textbox></v:roundrect><![endif]--></div>
+    </td>
+    </tr>
+    </table>
+    </td>
+    </tr>
+    </tbody>
+    </table>
+    </td>
+    </tr>
+    </tbody>
+    </table>
+    <table align='center' border='0' cellpadding='0' cellspacing='0' class='row row-6' role='presentation' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt;' width='100%'>
+    <tbody>
+    <tr>
+    <td>
+    <table align='center' border='0' cellpadding='0' cellspacing='0' class='row-content stack' role='presentation' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt; color: #000000; width: 800px; margin: 0 auto;' width='800'>
+    <tbody>
+    <tr>
+    <td class='column column-1' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt; font-weight: 400; text-align: left; padding-bottom: 5px; padding-top: 5px; vertical-align: top; border-top: 0px; border-right: 0px; border-bottom: 0px; border-left: 0px;' width='100%'>
+    <table border='0' cellpadding='10' cellspacing='0' class='divider_block block-1' role='presentation' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt;' width='100%'>
+    <tr>
+    <td class='pad'>
+    <div align='center' class='alignment'>
+    <table border='0' cellpadding='0' cellspacing='0' role='presentation' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt;' width='100%'>
+    <tr>
+    <td class='divider_inner' style='font-size: 1px; line-height: 1px; border-top: 2px solid #CDA95B;'><span> </span></td>
+    </tr>
+    </table>
+    </div>
+    </td>
+    </tr>
+    </table>
+    <table border='0' cellpadding='20' cellspacing='0' class='menu_block block-2' role='presentation' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt;' width='100%'>
+    <tr>
+    <td class='pad'>
+    <table border='0' cellpadding='0' cellspacing='0' role='presentation' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt;' width='100%'>
+    <tr>
+    <td class='alignment' style='text-align:center;font-size:0px;'>
+    <div class='menu-links'><!--[if mso]><table role='presentation' border='0' cellpadding='0' cellspacing='0' align='center' style='><tr style='text-align:center;'><![endif]--><!--[if mso]><td style='padding-top:20px;padding-right:20px;padding-bottom:20px;padding-left:20px'><![endif]--><a href='" . $unsubscribe_url . "' style='mso-hide:false;padding-top:20px;padding-bottom:20px;padding-left:20px;padding-right:20px;display:inline-block;color:#ffffff;font-family:Arial, Helvetica, sans-serif;font-size:16px;text-decoration:none;letter-spacing:normal;' target='_self'>Unsubscribe</a><!--[if mso]></td><td><![endif]--><span class='sep' style='font-size:16px;font-family:Arial, Helvetica, sans-serif;color:#ffffff;'>|</span><!--[if mso]></td><![endif]--><!--[if mso]><td style='padding-top:20px;padding-right:20px;padding-bottom:20px;padding-left:20px'><![endif]--><a href='https://him-powered.com' style='mso-hide:false;padding-top:20px;padding-bottom:20px;padding-left:20px;padding-right:20px;display:inline-block;color:#ffffff;font-family:Arial, Helvetica, sans-serif;font-size:16px;text-decoration:none;letter-spacing:normal;' target='_self'>View Online</a><!--[if mso]></td><![endif]--><!--[if mso]></tr></table><![endif]--></div>
+    </td>
+    </tr>
+    </table>
+    </td>
+    </tr>
+    </table>
+    </td>
+    </tr>
+    </tbody>
+    </table>
+    </td>
+    </tr>
+    </tbody>
+    </table>
+    <table align='center' border='0' cellpadding='0' cellspacing='0' class='row row-7' role='presentation' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt; background-color: #ffffff;' width='100%'>
+    <tbody>
+    <tr>
+    <td>
+    <table align='center' border='0' cellpadding='0' cellspacing='0' class='row-content stack' role='presentation' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt; color: #000000; width: 800px; margin: 0 auto;' width='800'>
+    <tbody>
+    <tr>
+    <td class='column column-1' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt; font-weight: 400; text-align: left; padding-bottom: 5px; padding-top: 5px; vertical-align: top; border-top: 0px; border-right: 0px; border-bottom: 0px; border-left: 0px;' width='100%'>
+    <table border='0' cellpadding='0' cellspacing='0' class='icons_block block-1' role='presentation' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt;' width='100%'>
+    <tr>
+    <td class='pad' style='vertical-align: middle; color: #1e0e4b; font-family: 'Inter', sans-serif; font-size: 15px; padding-bottom: 5px; padding-top: 5px; text-align: center;'>
+    <table cellpadding='0' cellspacing='0' role='presentation' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt;' width='100%'>
+    <tr>
+    <td class='alignment' style='vertical-align: middle; text-align: center;'><!--[if vml]><table align='center' cellpadding='0' cellspacing='0' role='presentation' style='display:inline-block;padding-left:0px;padding-right:0px;mso-table-lspace: 0pt;mso-table-rspace: 0pt;'><![endif]-->
+    <!--[if !vml]><!-->
+    <table cellpadding='0' cellspacing='0' class='icons-inner' role='presentation' style='mso-table-lspace: 0pt; mso-table-rspace: 0pt; display: inline-block; margin-right: -4px; padding-left: 0px; padding-right: 0px;'><!--<![endif]-->
+    <tr>
+    <td style='vertical-align: middle; text-align: center; padding-top: 5px; padding-bottom: 5px; padding-left: 5px; padding-right: 6px;'><a href='http://designedwithbeefree.com/' style='text-decoration: none;' target='_blank'><img align='center' alt='Beefree Logo' class='icon' height='32' src='images/Beefree-logo.png' style='display: block; height: auto; margin: 0 auto; border: 0;' width='34'/></a></td>
+    <td style='font-family: 'Inter', sans-serif; font-size: 15px; font-weight: undefined; color: #1e0e4b; vertical-align: middle; letter-spacing: undefined; text-align: center;'><a href='http://designedwithbeefree.com/' style='color: #1e0e4b; text-decoration: none;' target='_blank'>Designed with Beefree</a></td>
+    </tr>
+    </table>
+    </td>
+    </tr>
+    </table>
+    </td>
+    </tr>
+    </table>
+    </td>
+    </tr>
+    </tbody>
+    </table>
+    </td>
+    </tr>
+    </tbody>
+    </table>
+    </td>
+    </tr>
+    </tbody>
+    </table><!-- End -->
+    </body>
+    </html>"
+
+    return $hp_body;
 }
 
 add_action( 'wt-title', 'wt_title' );

@@ -379,7 +379,7 @@ class WT_Post_of_the_Day {
 		$sql = "CREATE TABLE $table_name (
 		  id mediumint(9) NOT NULL AUTO_INCREMENT,
 		  title tinytext NOT NULL,
-		  content text NOT NULL,
+		  postID mediumint(9) NOT NULL,
 		  cyclePosition mediumint(9) NOT NULL,
 		  isActive boolean NOT NULL,
 		  PRIMARY KEY  (id)
@@ -395,8 +395,20 @@ class WT_Post_of_the_Day {
 		global $wpdb;
 		// Get all posts from the database that are categorized as a "potd"
 		$option_name = $this->settings->base . 'potd_category';
-		$potd_cat = get_option($option_name);
-		$data = new WP_Query( array( 'posts_per_page' => '-1', 'order'   => 'ASC', 'cat' => $potd_cat ) );  
+
+		$potd_cat = get_option($option_name);			# TODO: Remove as is redundant
+		$data = new WP_Query( array(
+		    'post_type'      => 'tpp-devotional', // Specify the custom post type
+		    'posts_per_page' => -1,
+		    'order'          => 'ASC',
+		    'tax_query'      => array(
+		        array(
+		            'taxonomy' => 'Books', // Specify the custom taxonomy
+		            'field'    => 'id',
+		        ),
+		    ),
+		    'orderby'        => 'menu_order', // Sort by menu order
+		) );  
 
 		// Loop through all of the posts in the "potd" category and 
 		// add them to our custom table for ease of use
@@ -409,7 +421,7 @@ class WT_Post_of_the_Day {
 				WT_Post_of_the_Day::table_name(), 
 				array( 
 					'title' => get_the_title(), 
-					'content' => get_the_content(), 
+					'postID' => get_the_ID(),
 					'cyclePosition' => $count,
 					'isActive' => false,
 				) 
