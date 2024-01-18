@@ -398,12 +398,12 @@ class WT_Post_of_the_Day {
 
 		$potd_cat = get_option($option_name);			# TODO: Remove as is redundant
 		$data = new WP_Query( array(
-		    'post_type'      => 'tpp-devotional', // Specify the custom post type
+		    'post_type'      => 'tpp-devotional', // Specify the custom post type. TODO Make tpp-devotional set by options
 		    'posts_per_page' => -1,
 		    'order'          => 'ASC',
 		    'tax_query'      => array(
 		        array(
-		            'taxonomy' => 'Books', // Specify the custom taxonomy
+		            'taxonomy' => 'book', // Specify the custom taxonomy
 		            'field'    => 'id',
 		        ),
 		    ),
