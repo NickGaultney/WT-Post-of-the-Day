@@ -160,7 +160,7 @@ function all_emails() {
 */
 function email( $subscriber ) {
     $subject = wt_title();
-    $unsubscribe_url = wt_tnp_unsubscribe_url($subscriber->id)
+    $unsubscribe_url = wt_tnp_unsubscribe_url($subscriber->id);
     $message = email_content($unsubscribe_url);
     $headers = array('Content-Type: text/html; charset=UTF-8');
 
