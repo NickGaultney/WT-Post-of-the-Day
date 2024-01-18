@@ -208,7 +208,7 @@ function wt_content() {
 }
 
 function wt_tnp_unsubscribe_url( $user_id ) {
-  $url = home_url()
+  $url = home_url();
 
   // Check if the Newsletter plugin is installed
   if ( class_exists( 'Newsletter' ) ) {
