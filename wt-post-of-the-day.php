@@ -661,7 +661,7 @@ function email_content( $unsubscribe_url ) {
     </tbody>
     </table><!-- End -->
     </body>
-    </html>"
+    </html>";
 
     return $hp_body;
 }
