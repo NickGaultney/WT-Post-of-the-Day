@@ -234,7 +234,7 @@ function wt_tnp_unsubscribe_url( $user_id ) {
       // Handle the case where the plugin is not installed
   }
 
-  return $url
+  return $url;
 }
 
 /*
