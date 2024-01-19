@@ -229,12 +229,28 @@ class WT_Post_of_the_Day_Settings {
 				array(
 					'id'          => 'potd_category',
 					'label'       => __( 'Category', 'wt-post-of-the-day' ),
-					'description' => __( 'This is the category for all the PotD', 'wt-post-of-the-day' ),
+					'description' => __( 'This is the post type for all the PotD. Note: Currently does nothing', 'wt-post-of-the-day' ),
 					'type'        => 'select',
 					'options'     => $post_type_options, // Use the dynamically generated options
 					'default'     => 'post',
 					'placeholder' => __( 'Placeholder text', 'wt-post-of-the-day' ),
 				),
+				 array(
+		            'id'          => 'potd_email_schedule',
+		            'label'       => __( 'Days of the Week', 'wt-post-of-the-day' ),
+		            'description' => __( 'Select the days for the devotional email schedule.', 'wt-post-of-the-day' ),
+		            'type'        => 'checkbox',
+		            'options'     => array(
+		                'monday'    => __( 'Monday', 'wt-post-of-the-day' ),
+		                'tuesday'   => __( 'Tuesday', 'wt-post-of-the-day' ),
+		                'wednesday' => __( 'Wednesday', 'wt-post-of-the-day' ),
+		                'thursday'  => __( 'Thursday', 'wt-post-of-the-day' ),
+		                'friday'    => __( 'Friday', 'wt-post-of-the-day' ),
+		                'saturday'  => __( 'Saturday', 'wt-post-of-the-day' ),
+		                'sunday'    => __( 'Sunday', 'wt-post-of-the-day' ),
+		            ),
+		            'default'     => array( 'monday', 'wednesday', 'friday' ), // Set default selected days
+		        ),
 				array(
 					'id'          => 'potd_time_central_standard_time',
 					'label'       => __( 'Event Time', 'wt-post-of-the-day' ),
@@ -279,7 +295,7 @@ class WT_Post_of_the_Day_Settings {
 				array(
 					'id'          => 'potd_newsletter_image',
 					'label'       => __( 'Newsletter image', 'wt-post-of-the-day' ),
-					'description' => __( 'This is the Newsletter image that is displayed in the email', 'wt-post-of-the-day' ),
+					'description' => __( 'This is the Newsletter image that is displayed in the email. Note: Currently does nothing', 'wt-post-of-the-day' ),
 					'type'        => 'text',
 					'default'     => '',
 					'placeholder' => __( 'Placeholder text', 'wt-post-of-the-day' ),
@@ -287,7 +303,7 @@ class WT_Post_of_the_Day_Settings {
 				array(
 					'id'          => 'potd_newsletter_title',
 					'label'       => __( 'Newsletter title', 'wt-post-of-the-day' ),
-					'description' => __( 'This is the Newsletter title that is displayed in the email', 'wt-post-of-the-day' ),
+					'description' => __( 'This is the Newsletter title that is displayed in the email. Note: Currently does nothing', 'wt-post-of-the-day' ),
 					'type'        => 'text',
 					'default'     => 'Title',
 					'placeholder' => __( 'Placeholder text', 'wt-post-of-the-day' ),
@@ -295,7 +311,7 @@ class WT_Post_of_the_Day_Settings {
 				array(
 					'id'          => 'potd_newsletter_subtitle',
 					'label'       => __( 'Newsletter subtitle', 'wt-post-of-the-day' ),
-					'description' => __( 'This is the Newsletter subtitle that is displayed in the email', 'wt-post-of-the-day' ),
+					'description' => __( 'This is the Newsletter subtitle that is displayed in the email. Note: Currently does nothing', 'wt-post-of-the-day' ),
 					'type'        => 'text',
 					'default'     => 'subtitle',
 					'placeholder' => __( 'Placeholder text', 'wt-post-of-the-day' ),

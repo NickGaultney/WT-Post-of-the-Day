@@ -47,19 +47,27 @@ function wt_post_of_the_day() {
 }
 
 function wt_potd() {
-    // Gets the DB row of today's PotD
-    $current_potd = get_active_potd();
-    // Gets the index of the next post in the cycle
-    $next_potd_cycle_position = get_next_active_potd($current_potd);
+    $instance = wt_post_of_the_day();
+    $option_name = $instance->settings->base . 'potd_email_schedule';
+    $potd_email_schedule = get_option($option_name);
+    $current_day = strtolower(date('l'));
 
-    // Deactivates today's PotD by setting the "isActive" column to 0
-    deactivate_potd();
-    // Activates the new PotD by setting the "isActive" column to 1
-    activate_potd($next_potd_cycle_position);
+    if (in_array($current_day, $potd_email_schedule)) {
 
-    cache_potd();
-    do_action( 'qm/debug', 'Sending Emails....');
-    all_emails();
+      // Gets the DB row of today's PotD
+      $current_potd = get_active_potd();
+      // Gets the index of the next post in the cycle
+      $next_potd_cycle_position = get_next_active_potd($current_potd);
+
+      // Deactivates today's PotD by setting the "isActive" column to 0
+      deactivate_potd();
+      // Activates the new PotD by setting the "isActive" column to 1
+      activate_potd($next_potd_cycle_position);
+
+      cache_potd();
+      do_action( 'qm/debug', 'Sending Emails....');
+      all_emails();
+    }
 }
 
 /*
