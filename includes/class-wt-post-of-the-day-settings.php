@@ -235,22 +235,6 @@ class WT_Post_of_the_Day_Settings {
 					'default'     => 'post',
 					'placeholder' => __( 'Placeholder text', 'wt-post-of-the-day' ),
 				),
-				 array(
-		            'id'          => 'potd_email_schedule',
-		            'label'       => __( 'Days of the Week', 'wt-post-of-the-day' ),
-		            'description' => __( 'Select the days for the devotional email schedule.', 'wt-post-of-the-day' ),
-		            'type'        => 'checkbox',
-		            'options'     => array(
-		                'monday'    => __( 'Monday', 'wt-post-of-the-day' ),
-		                'tuesday'   => __( 'Tuesday', 'wt-post-of-the-day' ),
-		                'wednesday' => __( 'Wednesday', 'wt-post-of-the-day' ),
-		                'thursday'  => __( 'Thursday', 'wt-post-of-the-day' ),
-		                'friday'    => __( 'Friday', 'wt-post-of-the-day' ),
-		                'saturday'  => __( 'Saturday', 'wt-post-of-the-day' ),
-		                'sunday'    => __( 'Sunday', 'wt-post-of-the-day' ),
-		            ),
-		            'default'     => array( 'monday', 'wednesday', 'friday' ), // Set default selected days
-		        ),
 				array(
 					'id'          => 'potd_time_central_standard_time',
 					'label'       => __( 'Event Time', 'wt-post-of-the-day' ),

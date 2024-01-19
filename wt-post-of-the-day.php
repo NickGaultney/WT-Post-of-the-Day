@@ -47,9 +47,7 @@ function wt_post_of_the_day() {
 }
 
 function wt_potd() {
-    $instance = wt_post_of_the_day();
-    $option_name = $instance->settings->base . 'potd_email_schedule';
-    $potd_email_schedule = get_option($option_name);
+    $potd_email_schedule = array("monday", "wednesday", "friday");
     $current_day = strtolower(date('l'));
 
     if (in_array($current_day, $potd_email_schedule)) {
