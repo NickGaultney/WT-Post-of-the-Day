@@ -394,19 +394,13 @@ class WT_Post_of_the_Day {
 		// This is the wordpress database variable used to access the database directly using standard SQL commands
 		global $wpdb;
 		// Get all posts from the database that are categorized as a "potd"
-		$option_name = $this->settings->base . 'potd_category';
+		#$option_name = $this->settings->base . 'potd_category';
 
-		$potd_cat = get_option($option_name);			# TODO: Remove as is redundant
+		#$potd_cat = get_option($option_name);			# TODO: Remove as is redundant
 		$data = new WP_Query( array(
 		    'post_type'      => 'tpp-devotional', // Specify the custom post type. TODO Make tpp-devotional set by options
 		    'posts_per_page' => -1,
 		    'order'          => 'ASC',
-		    'tax_query'      => array(
-		        array(
-		            'taxonomy' => 'book', // Specify the custom taxonomy
-		            'field'    => 'id',
-		        ),
-		    ),
 		    'orderby'        => 'menu_order', // Sort by menu order
 		) );  
 
