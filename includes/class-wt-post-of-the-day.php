@@ -393,36 +393,57 @@ class WT_Post_of_the_Day {
 	private function load_posts() {
 		// This is the wordpress database variable used to access the database directly using standard SQL commands
 		global $wpdb;
-		// Get all posts from the database that are categorized as a "potd"
-		#$option_name = $this->settings->base . 'potd_category';
+		
+		// Get all book terms
+		$book_terms = get_terms( array(
+		    'taxonomy' => 'book',
+		    'hide_empty' => false, // Set to true if you only want terms with associated posts
+		) );
 
-		#$potd_cat = get_option($option_name);			# TODO: Remove as is redundant
-		$data = new WP_Query( array(
-		    'post_type'      => 'tpp-devotional', // Specify the custom post type. TODO Make tpp-devotional set by options
-		    'posts_per_page' => -1,
-		    'order'          => 'ASC',
-		    'orderby'        => 'menu_order', // Sort by menu order
-		) );  
+		// Initialize an array to store the grouped posts
+		$grouped_posts = array();
 
-		// Loop through all of the posts in the "potd" category and 
-		// add them to our custom table for ease of use
-		$count = 1; 
-		if ( $data->have_posts() ) {
-			while ( $data->have_posts() ) {
-				$data->the_post();
+		// Loop through each book term
+		foreach ( $book_terms as $term ) {
+		    // Query posts for the current term
+		    $posts_for_term = new WP_Query( array(
+		        'post_type'      => 'tpp-devotional',
+		        'posts_per_page' => -1,
+		        'order'          => 'ASC',
+		        'orderby'        => 'menu_order',
+		        'tax_query'      => array(
+		            array(
+		                'taxonomy' => 'book',
+		                'field'    => 'id',
+		                'terms'    => $term->term_id,
+		            ),
+		        ),
+		    ) );
 
-				$wpdb->insert( 
-				WT_Post_of_the_Day::table_name(), 
-				array( 
-					'title' => get_the_title(), 
-					'postID' => get_the_ID(),
-					'cyclePosition' => $count,
-					'isActive' => false,
-				) 
-			);
+		    // Add the posts to the grouped array
+		    $grouped_posts[ $term->name ] = $posts_for_term->posts;
+		}
 
-			$count += 1;
-			}
+		// Loop through each term in $grouped_posts
+	    $count = 1;
+		foreach ( $grouped_posts as $term_name => $posts_for_term ) {
+
+			// Loop through all of the posts in the "potd" category and 
+			// add them to our custom table for ease of use
+			// Loop through each post in the current term
+		    foreach ( $posts_for_term as $post ) {
+		        // Insert the post data into the custom table
+		        $wpdb->insert(
+		            WT_Post_of_the_Day::table_name(),
+		            array(
+		                'title'          => $post->post_title,
+		                'postID'         => $post->ID,
+		                'cyclePosition'  => $count,
+		                'isActive'       => false,
+		            )
+		        );
+		    	$count += 1; 
+		    }
 		}
 
 		// Set the first PotD as the current PotD
