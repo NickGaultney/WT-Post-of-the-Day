@@ -220,7 +220,7 @@ function wt_tnp_unsubscribe_url( $user_id ) {
       if ( $newsletter ) {
           // The Newsletter instance is available, so the plugin is active
         $subscriber = $newsletter->get_user($user_id);
-        $url = home_url() . '?na=uc&k=' . $subscriber->id . '-' . $subscriber->token;
+        $url = home_url() . '?na=uc&nk=' . $subscriber->id . '-' . $subscriber->token;
           // Proceed with using the $newsletter instance
           // ...
 
