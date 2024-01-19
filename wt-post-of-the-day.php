@@ -219,7 +219,7 @@ function wt_tnp_unsubscribe_url( $user_id ) {
 
       if ( $newsletter ) {
           // The Newsletter instance is available, so the plugin is active
-        $subscriber = $newsletter->get_user(user_id);
+        $subscriber = $newsletter->get_user($user_id);
         $url = home_url() . '?na=uc&k=' . $subscriber->id . '-' . $subscriber->token;
           // Proceed with using the $newsletter instance
           // ...
@@ -371,7 +371,7 @@ function email_content( $unsubscribe_url ) {
     <td class='pad'>
     <div style='font-family: sans-serif'>
     <div class=' style='font-size: 12px; font-family: Arial, Helvetica, sans-serif; mso-line-height-alt: 14.399999999999999px; color: #ffffff; line-height: 1.2;'>
-    <p style='margin: 0; font-size: 16px; text-align: left; mso-line-height-alt: 19.2px;'><span style='font-size:20px;'><em><strong>" . wt_title() . "</strong></em></span></p>
+    <p style='margin: 0; font-size: 16px; text-align: left; mso-line-height-alt: 19.2px;'><span style='font-size:20px;color:white;'><em><strong>" . wt_title() . "</strong></em></span></p>
     </div>
     </div>
     </td>
@@ -396,7 +396,7 @@ function email_content( $unsubscribe_url ) {
     <div style='font-family: sans-serif'>
     <div class=' style='font-size: 12px; font-family: Arial, Helvetica, sans-serif; mso-line-height-alt: 21.6px; color: #ffffff; line-height: 1.8;'>
     <p style='margin: 0; font-size: 16px; mso-line-height-alt: 21.6px;'> </p>
-    <p style='margin: 0; font-size: 16px; mso-line-height-alt: 28.8px;'><span style='font-size:16px;'>" . wt_content()['scripture'] . "</span></p>
+    <p style='margin: 0; font-size: 16px; mso-line-height-alt: 28.8px;'><span style='font-size:16px;color:white;'>" . wt_content()['scripture'] . "</span></p>
     </div>
     </div>
     </td>
@@ -423,7 +423,7 @@ function email_content( $unsubscribe_url ) {
     <td class='pad'>
     <div style='font-family: sans-serif'>
     <div class=' style='font-size: 12px; font-family: Arial, Helvetica, sans-serif; mso-line-height-alt: 14.399999999999999px; color: #ffffff; line-height: 1.2;'>
-    <p style='margin: 0; font-size: 16px; text-align: left; mso-line-height-alt: 19.2px;'><span style='font-size:20px;'><em><strong>Message</strong></em></span></p>
+    <p style='margin: 0; font-size: 16px; text-align: left; mso-line-height-alt: 19.2px;'><span style='font-size:20px;color:white;'><em><strong>Message</strong></em></span></p>
     </div>
     </div>
     </td>
@@ -447,7 +447,7 @@ function email_content( $unsubscribe_url ) {
     <td class='pad'>
     <div style='font-family: sans-serif'>
     <div class=' style='font-size: 12px; font-family: Arial, Helvetica, sans-serif; mso-line-height-alt: 18px; color: #ffffff; line-height: 1.5;'>
-    <p style='margin: 0; mso-line-height-alt: 24px;'><span style='font-size:16px;'>" . wt_content()['message'] . "</span></p>
+    <p style='margin: 0; mso-line-height-alt: 24px;'><span style='font-size:16px;color:white;'>" . wt_content()['message'] . "</span></p>
     </div>
     </div>
     </td>
@@ -474,7 +474,7 @@ function email_content( $unsubscribe_url ) {
     <td class='pad'>
     <div style='font-family: sans-serif'>
     <div class=' style='font-size: 12px; font-family: Arial, Helvetica, sans-serif; mso-line-height-alt: 14.399999999999999px; color: #ffffff; line-height: 1.2;'>
-    <p style='margin: 0; font-size: 16px; text-align: left; mso-line-height-alt: 19.2px;'><span style='font-size:20px;'><em><strong>Today's Quote</strong></em></span></p>
+    <p style='margin: 0; font-size: 16px; text-align: left; mso-line-height-alt: 19.2px;'><span style='font-size:20px;color:white;'><em><strong>Today's Quote</strong></em></span></p>
     </div>
     </div>
     </td>
@@ -499,7 +499,7 @@ function email_content( $unsubscribe_url ) {
     <div style='font-family: sans-serif'>
     <div class=' style='font-size: 12px; font-family: Arial, Helvetica, sans-serif; mso-line-height-alt: 18px; color: #ffffff; line-height: 1.5;'>
     <p style='margin: 0; font-size: 16px; mso-line-height-alt: 18px;'> </p>
-    <p style='margin: 0; font-size: 16px; mso-line-height-alt: 24px;'><span style='font-size:16px;'>" . wt_content()['quote'] . "</span></p>
+    <p style='margin: 0; font-size: 16px; mso-line-height-alt: 24px;'><span style='font-size:16px;color:white;'>" . wt_content()['quote'] . "</span></p>
     </div>
     </div>
     </td>
@@ -512,7 +512,7 @@ function email_content( $unsubscribe_url ) {
     <td class='pad'>
     <div style='font-family: sans-serif'>
     <div class=' style='font-size: 12px; font-family: Arial, Helvetica, sans-serif; mso-line-height-alt: 14.399999999999999px; color: #ffffff; line-height: 1.2;'>
-    <p style='margin: 0; font-size: 16px; text-align: left; mso-line-height-alt: 19.2px;'><span style='font-size:20px;'><em><strong>Today's Prayer</strong></em></span></p>
+    <p style='margin: 0; font-size: 16px; text-align: left; mso-line-height-alt: 19.2px;'><span style='font-size:20px;color:white;'><em><strong>Today's Prayer</strong></em></span></p>
     </div>
     </div>
     </td>
@@ -537,7 +537,7 @@ function email_content( $unsubscribe_url ) {
     <div style='font-family: sans-serif'>
     <div class=' style='font-size: 12px; font-family: Arial, Helvetica, sans-serif; mso-line-height-alt: 18px; color: #ffffff; line-height: 1.5;'>
     <p style='margin: 0; font-size: 16px; mso-line-height-alt: 18px;'> </p>
-    <p style='margin: 0; font-size: 16px; mso-line-height-alt: 24px;'><span style='font-size:16px;'>" . wt_content()['prayer'] . "</span></p>
+    <p style='margin: 0; font-size: 16px; mso-line-height-alt: 24px;'><span style='font-size:16px;color:white;'>" . wt_content()['prayer'] . "</span></p>
     </div>
     </div>
     </td>
