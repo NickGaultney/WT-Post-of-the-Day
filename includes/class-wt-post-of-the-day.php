@@ -393,18 +393,33 @@ class WT_Post_of_the_Day {
 	private function load_posts() {
 		// This is the wordpress database variable used to access the database directly using standard SQL commands
 		global $wpdb;
+
+		// Define the desired order of term slugs
+		$desired_order = array(
+		    'deuteronomy',
+		    'ruth',
+		    'job',
+		    'daniel',
+		    'jonah',
+		    'habakkuk',
+		    'haggai',
+		    'john',
+		    'colossians',
+		    '1st_timothy',
+		    '2nd_timothy',
+		    'philemon',
+		    'hebrews',
+		    'jude',
+		);
 		
-		// Get all book terms
-		$book_terms = get_terms( array(
-		    'taxonomy' => 'book',
-		    'hide_empty' => false, // Set to true if you only want terms with associated posts
-		) );
-
-		// Initialize an array to store the grouped posts
 		$grouped_posts = array();
-
-		// Loop through each book term
-		foreach ( $book_terms as $term ) {
+		
+		// Loop through each term in the desired order
+		foreach ( $desired_order as $term_slug ) {
+		    // Get the term object by slug
+		    $term = get_term_by( 'slug', $term_slug, 'book' );
+		    
+			// Initialize an array to store the grouped posts
 		    // Query posts for the current term
 		    $posts_for_term = new WP_Query( array(
 		        'post_type'      => 'tpp-devotional',
